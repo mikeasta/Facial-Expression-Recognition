@@ -67,7 +67,7 @@ def train_step(
     train_loss, train_acc = 0, 0
 
     for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
+        X, y = X.to(device).to(memory_format=torch.channels_last), y.to(device)
 
         y_pred = model(X)
 
@@ -104,7 +104,7 @@ def test_step(
 
     with torch.inference_mode():
         for batch, (X, y) in enumerate(dataloader):
-            X, y = X.to(device), y.to(device)
+            X, y = X.to(device).to(memory_format=torch.channels_last), y.to(device)
             test_pred_logits = model(X)
             loss = loss_fn(test_pred_logits, y)
             test_loss += loss.item()
@@ -170,7 +170,7 @@ def train(
         )
 
         # Each 10 epochs - save
-        if epoch % 10 == 0:
+        if (epoch + 1) % 10 == 0:
             save_model(model=model, directory=models_path, epoch=epoch)
 
         # Ensure all data is moved to CPU and converted to float for storage
@@ -187,10 +187,13 @@ model = FacialExpressionRecognitionModel(
     image_height=96,
     image_width=96,
     in_channels=3,
-    hidden_channels=10,
-    hidden_features=32,
-    out_features=7
-).to(device)
+    num_classes=7
+)
+
+# Load model
+# model_path = current_dir_path / "models" / "fer_model_epoch_50.pth"
+# model.load_state_dict(torch.load(f=model_path))
+# model.to(device=device).to(memory_format=torch.channels_last)
 
 loss_fn = torch.nn.CrossEntropyLoss()
 alpha = 1e-3
