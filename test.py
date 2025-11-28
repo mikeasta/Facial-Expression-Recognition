@@ -38,7 +38,7 @@ model = FacialExpressionRecognitionModel(
 ).to(device)
 
 # Get model weights folder
-model_name = "fer_model_epoch_0.pth"
+model_name = "fer_model_epoch_10.pth"
 model_path = current_dir_path / "models" / model_name
 
 # Load weights

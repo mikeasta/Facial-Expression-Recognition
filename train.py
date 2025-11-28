@@ -196,8 +196,12 @@ model = FacialExpressionRecognitionModel(
 # model.to(device=device).to(memory_format=torch.channels_last)
 
 loss_fn = torch.nn.CrossEntropyLoss()
-alpha = 1e-3
-optimizer = torch.optim.SGD(lr=alpha, params=model.parameters())
+optimizer = torch.optim.SGD(
+    lr=1e-3, 
+    params=model.parameters(), 
+    momentum=0.9, 
+    weight_decay=1e-4
+)
 epochs = 100
 
 print(summary(model, (3, 96, 96)))

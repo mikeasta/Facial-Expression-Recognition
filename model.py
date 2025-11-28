@@ -80,12 +80,12 @@ class FacialExpressionRecognitionModel(nn.Module):
             nn.Flatten(),
             nn.Linear(
                 in_features=in_features,
-                out_features=256
+                out_features=128
             ),
             nn.ReLU(),
             nn.Dropout(p=.5),
             nn.Linear(
-                in_features=256,
+                in_features=128,
                 out_features=num_classes
             )
         )
