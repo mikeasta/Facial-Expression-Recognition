@@ -1,13 +1,9 @@
 import os
 import torch
 import mlflow
-import torchvision
 from tqdm import tqdm
-from typing import Tuple
 from pathlib import Path
 from torchinfo import summary
-from datetime import datetime as dt
-from torch.utils.data import DataLoader
 from timeit import default_timer as timer 
 from torchvision import transforms
 from model import FacialExpressionRecognitionModel
@@ -99,7 +95,7 @@ def train(
                 save_model(
                     model=model, 
                     directory=models_path, 
-                    epoch=epoch
+                    epoch=epoch+1
                 )
 
             # Log metrics

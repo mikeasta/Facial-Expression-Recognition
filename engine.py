@@ -1,8 +1,8 @@
 import os
 import torch
 import matplotlib.pyplot as plt
-from typing import Tuple
 from pathlib import Path
+from typing import Tuple, List
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
 
@@ -92,11 +92,11 @@ def save_model(
 def load_model(
         model: torch.nn.Module,
         model_path: Path | str
-) -> torch.nn.Module:
+) -> None:
     """
     Loads model weights into model
     """
-    return model.load_state_dict(torch.load(f=model_path))
+    model.load_state_dict(torch.load(f=model_path))
 
 def create_dataloaders(
         data_path: Path | str,
@@ -134,14 +134,14 @@ def test_batch_and_plot_results(
         model: torch.nn.Module,
         batch: torch.Tensor,
         loss_fn: torch.nn.Module,
-        device: str
+        device: str,
+        classes: List[str]
 ):
     """
     Tests model using single batch and draws prediction result
     """
     model.eval()
     X, y = batch
-    print(f"{X=}\n{y=}")
     with torch.inference_mode():
         X, y = X.to(device=device).to(memory_format=torch.channels_last), y.to(device=device)
         test_pred_logits = model(X)
@@ -150,10 +150,12 @@ def test_batch_and_plot_results(
         test_loss /= len(y)
 
         # Draw predictions
-        fig, axs = plt.subplots(nrows=len(y), ncols=1, figsize=(10, 8))
+        fig, axs = plt.subplots(nrows=4, ncols=4, figsize=(12, 9))
         for i in range(len(y)):
-            axs[i, 0].imshow(X[i], cmap="gray")
-            axs[i, 0].set_title(f"Predicted: {test_pred_labels[i]} | True: {y[i]}")
+            ay = i // 4
+            ax = i % 4
+            axs[ay, ax].imshow(X.squeeze()[i], cmap="gray")
+            axs[ay, ax].set_title(f"Predicted: {classes[test_pred_labels[i]]} | True: {classes[y[i]]}")
         plt.tight_layout()
         plt.show()
 

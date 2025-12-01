@@ -1,12 +1,10 @@
-import os
 import torch
 from pathlib import Path
-from typing import Tuple
 from torchvision import transforms
-from engine import test_step, load_model
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from model import FacialExpressionRecognitionModel
+from engine import load_model, test_batch_and_plot_results
 
 # Device-agnostic code
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -40,16 +38,23 @@ model = FacialExpressionRecognitionModel(
     image_width=96,
     in_channels=1,
     num_classes=7
-).to(device)
+)#.to(device)
 
 # Get model weights folder
-model_name = "fer_model_epoch_39.pth"
+model_name = "fer_model_epoch_9.pth"
 model_path = current_dir_path / "models" / model_name
 
 # Load weights
-model = load_model(model=model, model_path=model_path)
+load_model(model=model, model_path=model_path)
 
 # Test model on one epoch
 loss_fn = torch.nn.CrossEntropyLoss()
-test_loss, test_acc = test_step(model, next(iter(test_dataloader)), loss_fn)
-print(f"{test_loss=}, {test_acc=}")
+classes = test_dataloader.dataset.classes
+
+test_batch_and_plot_results(
+    model=model,
+    batch=next(iter(test_dataloader)),
+    loss_fn=loss_fn,
+    device=device,
+    classes=classes
+)
