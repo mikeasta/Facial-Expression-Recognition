@@ -33,7 +33,7 @@ for cls, samples in classes.items():
     if not os.path.exists(class_test_path):
         os.mkdir(class_test_path)
 
-
+    random.seed(42)
     random.shuffle(samples)
     train_amount = int(len(samples) * TRAIN_SPLIT)
 
