@@ -3,6 +3,7 @@ import torch
 from typing import Tuple
 from pathlib import Path
 from torch.utils.data import DataLoader
+from torchvision import transforms, datasets
 
 # Training and testing functions
 def train_step(
@@ -95,3 +96,35 @@ def load_model(
     Loads model weights into model
     """
     return model.load_state_dict(torch.load(f=model_path))
+
+def create_dataloaders(
+        data_path: Path | str,
+        train_transforms: transforms,
+        test_transforms: transforms,
+        batch_size: int = 32,
+        num_workers: int = 0
+) -> Tuple[DataLoader, DataLoader]:
+    """
+    Loads data and creates dataloaders
+    """
+    train_path = os.path.join(data_path, "train")
+    test_path = os.path.join(data_path, "test")
+
+    train_data = datasets.ImageFolder(root=train_path, transform=train_transforms, target_transform=None)
+    test_data = datasets.ImageFolder(root=test_path, transform=test_transforms)
+
+    train_dataloader = DataLoader(
+        dataset=train_data,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=True
+    )
+
+    test_dataloader = DataLoader(
+        dataset=test_data,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=False
+    )
+
+    return (train_dataloader, test_dataloader)

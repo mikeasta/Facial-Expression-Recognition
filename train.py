@@ -1,18 +1,24 @@
 import os
 import torch
+import mlflow
+import torchvision
+from tqdm import tqdm
+from typing import Tuple
+from pathlib import Path
+from torchinfo import summary
 from datetime import datetime as dt
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-from pathlib import Path
-from model import FacialExpressionRecognitionModel
-from typing import Tuple
 from timeit import default_timer as timer 
-from tqdm import tqdm
-from torchsummary import summary
-from engine import train_step, test_step, save_model
+from torchvision import transforms
+from model import FacialExpressionRecognitionModel
+from engine import train_step, test_step, save_model, create_dataloaders
 
 # Device-agnostic
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# MLFlow Experiment setup
+mlflow.set_experiment("Facial Expression Reconition Custom Model")
+mlflow.enable_system_metrics_logging()
 
 # Image transforms
 train_transforms = transforms.Compose([
@@ -26,32 +32,17 @@ test_transforms = transforms.Compose([
     transforms.ToTensor()
 ])
 
-
-
-# Import datasets
+# Create loaders
 current_dir_path = Path(os.getcwd())
-train_path = os.path.join(current_dir_path, "data\\train")
-test_path = os.path.join(current_dir_path, "data\\test")
+data_path = os.path.join(current_dir_path, "data")
 
-train_data = datasets.ImageFolder(root=train_path, transform=train_transforms, target_transform=None)
-test_data = datasets.ImageFolder(root=test_path, transform=test_transforms)
-
-# Create dataloaders
 num_workers = 0
 batch_size  = 32
 
-train_dataloader = DataLoader(
-    dataset=train_data,
-    batch_size=batch_size,
-    num_workers=num_workers,
-    shuffle=True
-)
-
-test_dataloader = DataLoader(
-    dataset=test_data,
-    batch_size=batch_size,
-    num_workers=num_workers,
-    shuffle=False
+train_dataloader, test_dataloader = create_dataloaders(
+    data_path=data_path,
+    train_transforms=train_transforms,
+    test_transforms=test_transforms,
 )
 
 def train(
@@ -61,58 +52,69 @@ def train(
         optimizer: torch.optim.Optimizer,
         loss_fn: torch.nn.Module,
         epochs: int = 5
-) -> torch.nn.Module:
-    results = {
-        "train_loss": [],
-        "train_acc": [],
-        "test_loss": [],
-        "test_acc": [],
-    }
+):
+    """
+    Base train pipeline
+    """
+    with mlflow.start_run():
+        # Log parameters
+        mlflow.log_params({
+            "epochs": epochs,
+            "batch size": 32,
+            "learning rate": 1e-3
+        })
 
-    # Save path
-    models_path = current_dir_path / "models"
+        # Save path
+        models_path = current_dir_path / "models"
 
-    for epoch in tqdm(range(epochs)):
-        train_loss, train_acc = train_step(
-            model=model, 
-            dataloader=train_dataloader, 
-            loss_fn=loss_fn,
-            optimizer=optimizer,
-            device=device
-        )
-
-        test_loss, test_acc = test_step(
-            model=model, 
-            dataloader=test_dataloader, 
-            loss_fn=loss_fn,
-            device=device
-        )
-
-        print(
-            f"Epoch: {epoch+1} | "
-            f"train_loss: {train_loss:.3f} | "
-            f"train_acc: {train_acc:.3f} | "
-            f"test_loss: {test_loss:.3f} | "
-            f"test_acc: {test_acc:.3f}"
-        )
-
-        # Each 10 epochs - save
-        if (epoch + 1) % 10 == 0:
-            save_model(
+        for epoch in tqdm(range(epochs)):
+            train_loss, train_acc = train_step(
                 model=model, 
-                directory=models_path, 
-                epoch=epoch
+                dataloader=train_dataloader, 
+                loss_fn=loss_fn,
+                optimizer=optimizer,
+                device=device
             )
 
-        # Ensure all data is moved to CPU and converted to float for storage
-        results["train_loss"].append(train_loss.item() if isinstance(train_loss, torch.Tensor) else train_loss)
-        results["train_acc"].append(train_acc.item() if isinstance(train_acc, torch.Tensor) else train_acc)
-        results["test_loss"].append(test_loss.item() if isinstance(test_loss, torch.Tensor) else test_loss)
-        results["test_acc"].append(test_acc.item() if isinstance(test_acc, torch.Tensor) else test_acc)
-    
-    return results
+            test_loss, test_acc = test_step(
+                model=model, 
+                dataloader=test_dataloader, 
+                loss_fn=loss_fn,
+                device=device
+            )
 
-# Train model
+            print(
+                f"Epoch: {epoch+1} | "
+                f"train_loss: {train_loss:.3f} | "
+                f"train_acc: {train_acc:.3f} | "
+                f"test_loss: {test_loss:.3f} | "
+                f"test_acc: {test_acc:.3f}"
+            )
+
+            # Each 10 epochs - save
+            if (epoch + 1) % 10 == 0:
+                save_model(
+                    model=model, 
+                    directory=models_path, 
+                    epoch=epoch
+                )
+
+            # Log metrics with MLFlow
+            mlflow.log_metrics({
+                "train loss": train_loss,
+                "train accuracy": train_acc,
+                "test loss": test_loss,
+                "test accuracy": test_acc
+            })
+        
+        mlflow.pytorch.log_model(pytorch_model=model, name="model")
+        mlflow.set_tags({
+            "model type": "cnn",
+            "dataset": "fer dataset",
+            "framework": "pytorch"
+        })
+
+# Custom model
 torch.manual_seed(42)
 model = FacialExpressionRecognitionModel(
     image_height=96,
@@ -121,23 +123,28 @@ model = FacialExpressionRecognitionModel(
     num_classes=7
 )
 
-# Load model
-# model_path = current_dir_path / "models" / "fer_model_epoch_50.pth"
-# model.load_state_dict(torch.load(f=model_path))
-# model.to(device=device).to(memory_format=torch.channels_last)
-
+epochs = 150
+alpha=1e-3
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(
-    lr=1e-3, 
+    lr=alpha, 
     params=model.parameters(), 
     momentum=0.9, 
     weight_decay=1e-4
 )
-epochs = 100
 
-print(summary(model, (3, 96, 96)))
+print(
+    summary(
+        model, 
+        input_size=(32, 3, 96, 96),
+        row_settings=["var_names"],
+        col_names=["input_size", "output_size", "num_params", "trainable"],
+        col_width=20
+    )
+)
+
 start_time = timer()
-results = train(
+train(
     model=model,
     train_dataloader=train_dataloader,
     test_dataloader=test_dataloader,
