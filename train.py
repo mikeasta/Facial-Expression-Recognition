@@ -99,13 +99,11 @@ def train(
                     epoch=epoch
                 )
 
-            # Log metrics with MLFlow
-            mlflow.log_metrics({
-                "train loss": train_loss,
-                "train accuracy": train_acc,
-                "test loss": test_loss,
-                "test accuracy": test_acc
-            })
+            # Log metrics
+            mlflow.log_metric(key="train loss", value=train_loss, step=epoch)
+            mlflow.log_metric(key="train acc", value=train_acc, step=epoch)
+            mlflow.log_metric(key="test loss", value=test_loss, step=epoch)
+            mlflow.log_metric(key="test acc", value=test_acc, step=epoch)
         
         mlflow.pytorch.log_model(pytorch_model=model, name="model")
         mlflow.set_tags({
