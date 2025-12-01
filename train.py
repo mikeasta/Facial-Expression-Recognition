@@ -23,12 +23,15 @@ mlflow.enable_system_metrics_logging()
 # Image transforms
 train_transforms = transforms.Compose([
     transforms.Resize((96, 96)),
+    transforms.Grayscale(num_output_channels=1),
     transforms.RandomHorizontalFlip(p=.5),
+    transforms.RandomCrop(size=(96, 96)),
     transforms.ToTensor()
 ])
 
 test_transforms = transforms.Compose([
     transforms.Resize((96, 96)),
+    transforms.Grayscale(num_output_channels=1),
     transforms.ToTensor()
 ])
 
@@ -117,7 +120,7 @@ torch.manual_seed(42)
 model = FacialExpressionRecognitionModel(
     image_height=96,
     image_width=96,
-    in_channels=3,
+    in_channels=1,
     num_classes=7
 )
 
@@ -134,7 +137,7 @@ optimizer = torch.optim.SGD(
 print(
     summary(
         model, 
-        input_size=(32, 3, 96, 96),
+        input_size=(32, 1, 96, 96),
         row_settings=["var_names"],
         col_names=["input_size", "output_size", "num_params", "trainable"],
         col_width=20

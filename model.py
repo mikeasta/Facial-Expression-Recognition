@@ -78,12 +78,7 @@ class FacialExpressionRecognitionModel(nn.Module):
         in_features = int(self.image_width * self.image_height * 256)
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            # nn.Linear(
-            #     in_features=in_features,
-            #     out_features=128
-            # ),
-            # nn.ReLU(),
-            nn.Dropout(p=.2),
+            nn.Dropout(p=.5),
             nn.Linear(
                 in_features=in_features,
                 out_features=num_classes

@@ -14,6 +14,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # Prepare image transforms
 test_transforms = transforms.Compose([
     transforms.Resize((96,96)),
+    transforms.Grayscale(num_output_channels=1),
     transforms.ToTensor()
 ])
 
@@ -28,18 +29,21 @@ test_dataset = ImageFolder(
 )
 
 # Prepare iterable
-test_dataloader = DataLoader(dataset=test_dataset)
+test_dataloader = DataLoader(
+    dataset=test_dataset,
+    batch_size=16
+)
 
 # Initialize model
 model = FacialExpressionRecognitionModel(
     image_height=96,
     image_width=96,
-    in_channels=3,
+    in_channels=1,
     num_classes=7
 ).to(device)
 
 # Get model weights folder
-model_name = "fer_model_epoch_10.pth"
+model_name = "fer_model_epoch_39.pth"
 model_path = current_dir_path / "models" / model_name
 
 # Load weights
@@ -47,5 +51,5 @@ model = load_model(model=model, model_path=model_path)
 
 # Test model on one epoch
 loss_fn = torch.nn.CrossEntropyLoss()
-test_loss, test_acc = test_step(model, test_dataloader, loss_fn)
+test_loss, test_acc = test_step(model, next(iter(test_dataloader)), loss_fn)
 print(f"{test_loss=}, {test_acc=}")

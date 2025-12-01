@@ -1,5 +1,6 @@
 import os
 import torch
+import matplotlib.pyplot as plt
 from typing import Tuple
 from pathlib import Path
 from torch.utils.data import DataLoader
@@ -128,3 +129,31 @@ def create_dataloaders(
     )
 
     return (train_dataloader, test_dataloader)
+
+def test_batch_and_plot_results(
+        model: torch.nn.Module,
+        batch: torch.Tensor,
+        loss_fn: torch.nn.Module,
+        device: str
+):
+    """
+    Tests model using single batch and draws prediction result
+    """
+    model.eval()
+    X, y = batch
+    print(f"{X=}\n{y=}")
+    with torch.inference_mode():
+        X, y = X.to(device=device).to(memory_format=torch.channels_last), y.to(device=device)
+        test_pred_logits = model(X)
+        test_loss = loss_fn(test_pred_logits, y)
+        test_pred_labels = test_pred_logits.argmax(dim=1)
+        test_loss /= len(y)
+
+        # Draw predictions
+        fig, axs = plt.subplots(nrows=len(y), ncols=1, figsize=(10, 8))
+        for i in range(len(y)):
+            axs[i, 0].imshow(X[i], cmap="gray")
+            axs[i, 0].set_title(f"Predicted: {test_pred_labels[i]} | True: {y[i]}")
+        plt.tight_layout()
+        plt.show()
+
